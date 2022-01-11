@@ -103,6 +103,31 @@ object_spread: {
     ]
 }
 
+object_spread_nullish_undefined: {
+    input: {
+        let o = { ...undefined, ...{a: true} }
+        id(o);
+    }
+
+    expect: {
+        let o = {a: true};
+        id(o)
+    }
+}
+
+object_spread_nullish_null: {
+    input: {
+        let o = { ...null, ...{a: true} }
+        id(o);
+    }
+
+    expect: {
+        let o = {a: true};
+        id(o)
+    }
+}
+
+
 avoid_spread_hole: {
     input: {
         let x = [...[,]]
@@ -131,4 +156,18 @@ avoid_spread_getset_object: {
     }
 
     expect_stdout: "1 undefined 2 3 2 3"
+}
+
+avoid_spread_this: {
+    input: {
+        function foo() {
+            const defaults = { SS: 2 };
+
+            return { ...this, ...defaults };
+        }
+
+        console.log(Object.keys(foo.call({ PA: 1 })));
+    }
+
+    expect_stdout: "[ 'PA', 'SS' ]"
 }

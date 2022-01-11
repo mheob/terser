@@ -252,6 +252,28 @@ hoist_funs_strict: {
     ]
 }
 
+scope_funs_strict: {
+    mangle = { }
+    input: {
+        'use strict';
+        function x() {
+            if (true) {
+                let name1 = "nnnnffff"
+                function name2() {}
+            }
+        }
+    }
+    expect: {
+        'use strict';
+        function x() {
+            if (true) {
+                let n = "nnnnffff"
+                function f() {}
+            }
+        }
+    }
+}
+
 issue_203: {
     options = {
         keep_fargs: false,
@@ -1306,9 +1328,7 @@ issue_2620_4: {
     expect: {
         var c = "FAIL";
         !function() {
-            switch (NaN) {
-              case void (c = "PASS"):
-            }
+            if (NaN === void (c = "PASS"));
         }();
         console.log(c);
     }
@@ -2035,6 +2055,7 @@ issue_2842: {
     options = {
         side_effects: true,
         reduce_vars: true,
+        reduce_funcs: true,
         unused: true,
     }
     input: {

@@ -202,6 +202,31 @@ mangle_unquoted_properties: {
     }
 }
 
+mangle_nth_identifier: {
+    mangle = {
+        properties: {
+            nth_identifier: (function () {
+                function get(n) {
+                    return "zyxwvutsrq"[n];
+                }
+                return {
+                    get
+                };
+            })()
+        },
+    }
+    input: {
+        var a = {};
+        a.foo = "bar";
+        x = { baz: "ban" };
+    }
+    expect: {
+        var a = {};
+        a.v = "bar";
+        x = { u: "ban" };
+    }
+}
+
 mangle_debug: {
     mangle = {
         properties: {
@@ -1302,10 +1327,10 @@ computed_property: {
         }.a);
     }
     expect: {
-        console.log([
-            "bar",
-            console.log("foo")
-        ][0]);
+        console.log({
+            a: "bar",
+            [console.log("foo")]: 42,
+        }.a);
     }
     expect_stdout: [
         "foo",
@@ -1369,12 +1394,14 @@ const_prop_assign_strict: {
             this._aircraft = [];
         }
         (function() {}).prototype.destroy = x();
+        (class {}).prototype.destroy = y();
     }
     expect: {
         function Simulator() {
             this._aircraft = [];
         }
         x();
+        y();
     }
 }
 
@@ -1389,12 +1416,14 @@ const_prop_assign_pure: {
             this._aircraft = [];
         }
         (function() {}).prototype.destroy = x();
+        (class {}).prototype.destroy = y();
     }
     expect: {
         function Simulator() {
             this._aircraft = [];
         }
         x();
+        y();
     }
 }
 
@@ -2420,6 +2449,31 @@ dont_mangle_computed_property_2: {
         "bar 1 2 seven zero one Null Undefined infinity nan Void",
         "Null Undefined infinity nan",
     ]
+}
+
+dont_flatten_computed_property: {
+    options = {
+        properties: true
+    }
+    input: {
+        console.log({
+            a: "FAIL",
+            [String.fromCharCode(97)]: "PASS"
+        }.a);
+    }
+    expect_stdout: "PASS"
+}
+
+dont_flatten_proto: {
+    options = {
+        properties: true
+    }
+    input: {
+        console.log(typeof {
+            __proto__: "FAIL",
+        }.__proto__);
+    }
+    expect_stdout: "object"
 }
 
 mangle_properties_which_matches_pattern: {

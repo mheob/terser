@@ -9,17 +9,19 @@ basic_class_properties: {
             = "P"
             another =
             "A";
-            //#private;
-            //#private2 = "SS";
+            get;
+            set = "S";
+            #private;
+            #private2 = "S";
             toString() {
                 if ('bar' in this && 'foo' in A) {
-                    return A.fil + this.another// + this.#private2
+                    return A.fil + this.another + this.set + this.#private2
                 }
             }
         }
         console.log(new A().toString())
     }
-    expect_stdout: "PA" // SS"
+    expect_stdout: "PASS"
 }
 
 computed_class_properties: {
@@ -244,5 +246,212 @@ mangle_class_properties_keep_quoted: {
                 return this.bar + Foo.zzz;
             }
         }
+    }
+}
+
+private_class_properties: {
+    no_mozilla_ast = true;
+    node_version = ">=12";
+    options = {
+        ecma: 2015
+    }
+    input: {
+        class Foo {
+            #bar = "FooBar"
+
+            get bar() {
+                return this.#bar;
+            }
+        }
+        console.log(new Foo().bar)
+    }
+    expect: {
+        class Foo {
+            #bar = "FooBar"
+
+            get bar() {
+                return this.#bar;
+            }
+        }
+        console.log(new Foo().bar)
+    }
+    expect_stdout: "FooBar"
+}
+
+same_name_public_private: {
+    no_mozilla_ast = true;
+    node_version = ">=12"
+    input: {
+        class A {
+            static foo
+            bar
+            static fil
+            = "P"
+            another =
+            "A";
+            #fil;
+            #another = "SS";
+            ["#another"] = "XX";
+            toString() {
+                if ('bar' in this && 'foo' in A && !("fil" in this)) {
+                    return A.fil + this.another + this.#another;
+                }
+            }
+        }
+        console.log(new A().toString())
+    }
+    expect_stdout: "PASS"
+}
+
+static_private_fields: {
+    no_mozilla_ast = true;
+    node_version = ">=12"
+    input: {
+        class A {
+            static #a = "P";
+            b = "A";
+            #c = "SS";
+            toString() {
+                return A.#a + this.b + this.#c;
+            }
+        }
+        console.log(new A().toString())
+    }
+    expect_stdout: "PASS"
+}
+
+optional_chaining_private_fields: {
+    no_mozilla_ast = true;
+    node_version = ">=12"
+    input: {
+        class A {
+            #opt = undefined;
+            toString() {
+                return this?.#opt ?? "PASS";
+            }
+        }
+        console.log(new A().toString())
+    }
+    expect: {
+        class A {
+            #opt = void 0;
+            toString() {
+                return this?.#opt ?? "PASS";
+            }
+        }
+        console.log(new A().toString())
+    }
+    // expect_stdout: "PASS" // < tested in chrome, fails with nodejs 14 (current LTS)
+}
+
+tolerate_out_of_class_private_fields: {
+    no_mozilla_ast = true;
+    node_version = ">=12"
+    input: {
+        Bar.#foo = "bad"
+    }
+    expect_exact: 'Bar.#foo="bad";'
+}
+
+private_properties_can_be_mangled: {
+    no_mozilla_ast = true;
+    node_version = ">=12"
+    mangle = {
+        properties: true
+    }
+    input: {
+        class X {
+            aaaaaa = "P"
+            #aaaaaa = "A"
+            #bbbbbb() {
+                return "SS"
+            }
+            get #cccccc() {}
+            set #dddddd(v) {}
+            log() {
+                console.log(this.aaaaaa + this.#aaaaaa + this.#bbbbbb() + this.#cccccc + this.#dddddd)
+            }
+        }
+
+        new X().log()
+    }
+    expect: {
+        class X {
+            t = "P"
+            #a = "A"
+            #s() {
+                return "SS"
+            }
+            get #c() {}
+            set #t(a) {}
+            log() {
+                console.log(this.t + this.#a + this.#s() + this.#c + this.#t)
+            }
+        }
+
+        new X().log()
+    }
+}
+
+nested_private_properties_can_be_mangled: {
+    no_mozilla_ast = true;
+    node_version = ">=12"
+    mangle = {
+        properties: true
+    }
+    input: {
+        class X {
+            #test = "PASS"
+            #aaaaaa = this;
+            #bbbbbb() {
+                return this;
+            }
+            get #cccccc() { return this; }
+            log() {
+                console.log(this.#test);
+                console.log(this.#aaaaaa.#test);
+                console.log(this.#bbbbbb().#test);
+                console.log(this.#cccccc.#test);
+                console.log(this?.#test);
+                console.log(this?.#aaaaaa.#test);
+                console.log(this?.#bbbbbb().#test);
+                console.log(this?.#cccccc.#test);
+                console.log(this.#test);
+                console.log(this.#aaaaaa?.#test);
+                console.log(this.#bbbbbb?.().#test);
+                console.log(this.#bbbbbb()?.#test);
+                console.log(this.#cccccc?.#test);
+            }
+        }
+
+        new X().log()
+    }
+    expect: {
+        class X {
+            #s = "PASS";
+            #o = this;
+            #t() {
+                return this;
+            }
+            get #c() {
+                return this;
+            }
+            log() {
+                console.log(this.#s);
+                console.log(this.#o.#s);
+                console.log(this.#t().#s);
+                console.log(this.#c.#s);
+                console.log(this?.#s);
+                console.log(this?.#o.#s);
+                console.log(this?.#t().#s);
+                console.log(this?.#c.#s);
+                console.log(this.#s);
+                console.log(this.#o?.#s);
+                console.log(this.#t?.().#s);
+                console.log(this.#t()?.#s);
+                console.log(this.#c?.#s);
+            }
+        }
+        new X().log();
     }
 }

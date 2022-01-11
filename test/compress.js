@@ -14,6 +14,7 @@ import { Compressor } from "../lib/compress/index.js";
 import {
     reserve_quoted_keys,
     mangle_properties,
+    mangle_private_properties,
 } from "../lib/propmangle.js";
 import { base54 } from "../lib/scope.js";
 import { string_template, defaults } from "../lib/utils/index.js";
@@ -174,20 +175,22 @@ async function run_compress_tests() {
                 });
                 return false;
             }
-            var ast = input.to_mozilla_ast();
-            var mozilla_options = {
-                ecma: output_options.ecma,
-                ascii_only: output_options.ascii_only,
-                comments: false,
-            };
-            var ast_as_string = AST.AST_Node.from_mozilla_ast(ast).print_to_string(mozilla_options);
-            var input_string = input.print_to_string(mozilla_options);
-            if (input_string !== ast_as_string) {
-                log("!!! Mozilla AST I/O corrupted input\n---INPUT---\n{input}\n---OUTPUT---\n{output}\n\n", {
-                    input: input_string,
-                    output: ast_as_string,
-                });
-                return false;
+            if (!test.no_mozilla_ast) {
+                var ast = input.to_mozilla_ast();
+                var mozilla_options = {
+                    ecma: output_options.ecma,
+                    ascii_only: output_options.ascii_only,
+                    comments: false,
+                };
+                var ast_as_string = AST.AST_Node.from_mozilla_ast(ast).print_to_string(mozilla_options);
+                var input_string = input.print_to_string(mozilla_options);
+                if (input_string !== ast_as_string) {
+                    log("!!! Mozilla AST I/O corrupted input\n---INPUT---\n{input}\n---OUTPUT---\n{output}\n\n", {
+                        input: input_string,
+                        output: ast_as_string,
+                    });
+                    return false;
+                }
             }
             var options = defaults(test.options, { });
             if (test.mangle && test.mangle.properties && test.mangle.properties.keep_quoted) {
@@ -209,7 +212,6 @@ async function run_compress_tests() {
             var output = cmp.compress(input);
             output.figure_out_scope(test.mangle);
             if (test.mangle) {
-                base54.reset();
                 output.compute_char_frequency(test.mangle);
                 (function(cache) {
                     if (!cache) return;
@@ -226,6 +228,7 @@ async function run_compress_tests() {
                     }
                 })(test.mangle.cache);
                 output.mangle_names(test.mangle);
+                mangle_private_properties(output, test.mangle);
                 if (test.mangle.properties) {
                     output = mangle_properties(output, test.mangle.properties);
                 }
@@ -289,7 +292,9 @@ async function run_compress_tests() {
             return true;
         }
         var tests = parse_test(path.resolve(dir, file));
+        let { GREP } = process.env;
         for (var i in tests) if (tests.hasOwnProperty(i)) {
+            if (GREP && !i.includes(GREP)) continue;
             if (!await test_case(tests[i])) {
                 failures++;
                 failed_files[file] = 1;
@@ -339,7 +344,11 @@ function parse_test(file) {
         if (!(node instanceof AST.AST_Toplevel)) croak(node);
     });
     ast.walk(tw);
-    return tests;
+
+    const only_tests = Object.entries(tests).filter(([_name, test]) => test.only);
+    return only_tests.length > 0
+        ? Object.fromEntries(only_tests)
+        : tests;
 
     function croak(node) {
         throw new Error(tmpl("Can't understand test file {file} [{line},{col}]\n{code}", {
@@ -382,6 +391,7 @@ function parse_test(file) {
             name: name,
             options: {},
             reminify: true,
+            only: false
         };
         var tw = new AST.TreeWalker(function(node, descend) {
             if (node instanceof AST.AST_Assign) {

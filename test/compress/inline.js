@@ -93,6 +93,38 @@ inline_within_extends_2: {
     expect_stdout: "PASS"
 }
 
+dont_inline_side_effects: {
+    options = {
+        inline: true,
+        toplevel: true
+    }
+    input: {
+        class X extends (console.log("PASS 1"), null) {
+            static [(console.log("PASS 2"), 'prop')] = "PASS 4"
+        }
+
+        console.log("PASS 3")
+
+        console.log(X.prop)
+    }
+    expect: {
+        class X extends (console.log("PASS 1"), null) {
+            static [(console.log("PASS 2"), 'prop')] = "PASS 4"
+        }
+
+        console.log("PASS 3")
+
+        console.log(X.prop)
+    }
+    expect_stdout: [
+        "PASS 1",
+        "PASS 2",
+        "PASS 3",
+        "PASS 4"
+    ]
+    node_version: ">=14"
+}
+
 issue_308: {
     options = {
         defaults: true,
@@ -425,5 +457,32 @@ do_not_repeat_when_variable_larger_than_inlined_node: {
         pass(s);
         pass(s);
         pass(s);
+    }
+}
+
+inline_using_correct_arguments: {
+    options = {
+        reduce_vars: true,
+        inline: true,
+        passes: 2,
+        toplevel: true,
+        unused: true
+    }
+
+    input: {
+        function run (s, t) {
+            return s.run(t);
+        }
+
+        /*#__INLINE__*/ run(a, "foo");
+        /*#__INLINE__*/ run(a, "bar");
+        /*#__INLINE__*/ run(a, "123");
+    }
+
+    expect: {
+        s = a, t = "foo", s.run(t);
+        var s, t;
+        (function(s, t) { return s.run("bar") })(a);
+        (function(s, t) { return s.run("123") })(a);
     }
 }

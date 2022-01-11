@@ -293,7 +293,7 @@ export_default_anon_class: {
     expect_exact: "export default class{foo(){console.log(3)}}"
 }
 
-export_module_statement: {
+export_from_statement: {
     input: {
         export * from "a.js";
         export {A} from "a.js";
@@ -301,6 +301,34 @@ export_module_statement: {
         export {C};
     }
     expect_exact: 'export*from"a.js";export{A}from"a.js";export{A,B}from"a.js";export{C};'
+}
+
+import_assertions: {
+    input: {
+        import "hello" assert { key: 'value' };
+    }
+    expect_exact: 'import"hello"assert{key:"value"};'
+}
+
+import_assertions_with_spaces_in_obj: {
+    input: {
+        import "hello" assert { 'k e y': 'value' };
+    }
+    expect_exact: 'import"hello"assert{"k e y":"value"};'
+}
+
+export_from_assertions: {
+    input: {
+        export * from "hello" assert { key: 'value' };
+    }
+    expect_exact: 'export*from"hello"assert{key:"value"};'
+}
+
+export_named_from_assertions: {
+    input: {
+        export { x } from "hello" assert { key: 'value' };
+    }
+    expect_exact: 'export{x}from"hello"assert{key:"value"};'
 }
 
 import_statement_mangling: {
